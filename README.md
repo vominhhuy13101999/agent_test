@@ -1,7 +1,5 @@
 # Demo with Google Agent Development Kit (ADK)
 
-# Demo Context Model Protocol (MCP)
-
 ## Setup environment
 
 Use `UV` as Package Manager 
