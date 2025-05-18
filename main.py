@@ -76,8 +76,9 @@ async def main():
             ]
             
             for event in events:
-                print(event)
-            
+                if event.is_final_response():
+                    print(event.content.parts[0].text)
+
             # print(runner.session_service.sessions)
             # print(runner.session_service.user_state)
             # print(runner.session_service.app_state)

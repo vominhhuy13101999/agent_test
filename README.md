@@ -22,3 +22,13 @@ Steps:
 ## Run Project 
 
 At project folder, run command `uv run main.py` to run an Agent program
+
+### Use self-hosted model
+
+Use model `qwen 3 - 1.7B`, which is suitable for local testing 
+
+- Test with `Ollama`
+```
+ollama run qwen3:1.7B
+```
+
