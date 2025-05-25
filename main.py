@@ -8,7 +8,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 
-from multi_tool_agent.agent import create_agent
+from multi_tool_agent import create_agent
 
 class Role(str, Enum):
     USER = "user"
@@ -77,6 +77,7 @@ async def main():
             
             for event in events:
                 print(event)
+                print(event.content.parts[0].text)
             
             # print(runner.session_service.sessions)
             # print(runner.session_service.user_state)
