@@ -30,16 +30,15 @@ from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 
 _agent = None
 
-async def get_agent() -> Agent:
+def get_agent() -> Agent:
     global _agent
     if _agent is None:
-        _agent, _ = await create_agent()
+        _agent = create_agent()
     return _agent
 
-async def create_agent():
+def create_agent():
     """Gets tools from MCP Server"""
-    
-    remote_tools, exit_stack = await MCPToolset.from_server(
+    remote_tools = MCPToolset(
         connection_params=SseServerParams(
             url="http://127.0.0.1:17324/sse"
         )
@@ -48,10 +47,10 @@ async def create_agent():
     # for index, tool in enumerate(remote_tools):
     #     print(f"Tool {index}: {tool._get_declaration().name}")
     
-    # model = "gemini-2.0-flash" # - Gemini hosted by Google
+    model = "gemini-2.0-flash" # - Gemini hosted by Google
     
-    model_name = "qwen3:1.7B"
-    model = LiteLlm(model=f"ollama_chat/{model_name}")
+    # model_name = "qwen3:1.7B"
+    # model = LiteLlm(model=f"ollama_chat/{model_name}")
     
     agent = Agent(
         name="tool_agent",
@@ -61,7 +60,7 @@ async def create_agent():
             "You are a tool agent. You can find roots of equations, or solve high school math problems. You can use the tools to help you with your tasks. "
             "Please provide the result of the calculation."
         ),
-        tools=remote_tools
+        tools=[remote_tools]
     )
     
-    return agent, exit_stack
+    return agent
