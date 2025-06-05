@@ -1,94 +1,80 @@
 import datetime
-
-from enum import Enum
-
-from google.genai import types
-
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
-
-from multi_tool_agent import create_agent
-
-class Role(str, Enum):
-    USER = "user"
+from src.agent_manager import MCPAgentManager
+from src.error_handler import ErrorHandler
 
 async def main():
-    agent, exit_stack = await create_agent()
+    """Enhanced main function with better error handling and modular design."""
+    error_handler = ErrorHandler("main_app")
+    agent_manager = MCPAgentManager()
     
-    runner = None
-    
-    while True:
-        user_input = input("Update toolset (or 'exit' to quit): ")
-        user_input = user_input.strip().lower()
-        if user_input == 'exit':
-            break
-        elif user_input == 'check':
-            print(f"Tools: {agent.tools}")
-        elif user_input == 'update_toolset':
-            print(f"Updating toolset ...")
-            await exit_stack.aclose()
-            
-            new_tools, new_exit_stack = await MCPToolset.from_server(
-                connection_params=SseServerParams(
-                    url="http://127.0.0.1:17234/sse"
-                )
-            )
-            print(new_tools)
-            
-            agent.tools = new_tools
-            exit_stack = new_exit_stack
-            
-            print(f"Toolset updated at {datetime.datetime.now()}")
-        else:
-            if runner is None:
-                session_service = InMemorySessionService()
+    try:
+        print("🤖 Initializing MCP Agent...")
+        await agent_manager.initialize()
+        print("✅ Agent initialized successfully!")
+        
+        print("\nAvailable commands:")
+        print("  - 'exit': Quit the application")
+        print("  - 'check': Show current tools")
+        print("  - 'update': Update toolset")
+        print("  - Any other text: Send to agent\n")
+        
+        while True:
+            try:
+                user_input = input("💬 Enter command or question: ").strip()
                 
-                runner = Runner(
-                    app_name="Math APP",
-                    agent=agent,
-                    session_service=session_service
-                )
+                if user_input.lower() == 'exit':
+                    print("👋 Goodbye!")
+                    break
+                    
+                elif user_input.lower() == 'check':
+                    if agent_manager.agent and hasattr(agent_manager.agent, 'tools'):
+                        print(f"🛠️  Tools: {len(agent_manager.agent.tools)} available")
+                        for i, tool in enumerate(agent_manager.agent.tools[:5]):  # Show first 5
+                            print(f"  {i+1}. {tool}")
+                        if len(agent_manager.agent.tools) > 5:
+                            print(f"  ... and {len(agent_manager.agent.tools) - 5} more")
+                    else:
+                        print("❌ No tools available")
+                        
+                elif user_input.lower() == 'update':
+                    print("🔄 Updating toolset...")
+                    try:
+                        await agent_manager.update_toolset()
+                        print(f"✅ Toolset updated at {datetime.datetime.now().strftime('%H:%M:%S')}")
+                    except Exception as e:
+                        error_msg = error_handler.handle_agent_error(e)
+                        print(f"❌ Update failed: {error_msg}")
+                        
+                elif user_input:
+                    print("🔍 Processing...")
+                    response = await agent_manager.run(user_input)
+                    print(f"🤖 Response:\n{response}")
+                    
+            except KeyboardInterrupt:
+                print("\n👋 Interrupted by user. Goodbye!")
+                break
+            except Exception as e:
+                error_msg = error_handler.handle_agent_error(e)
+                print(f"❌ Error: {error_msg}")
                 
-                if not runner.session_service.get_session(
-                    app_name="Math APP",
-                    user_id="anhld",
-                    session_id="anhld-session-01"
-                ):
-                    runner.session_service.create_session(
-                        app_name="Math APP",
-                        user_id="anhld",
-                        session_id="anhld-session-01"
-                    )
-                else:
-                    print("Session already exists.")
-            
-            events = [
-                event
-                async for event in runner.run_async(
-                    user_id="anhld",
-                    session_id="anhld-session-01",
-                    new_message=types.Content(
-                        role=Role.USER,
-                        parts=[types.Part(text=user_input)]
-                    )
-                )
-            ]
-            
-            for event in events:
-                print(event)
-                print(event.content.parts[0].text)
-            
-            # print(runner.session_service.sessions)
-            # print(runner.session_service.user_state)
-            # print(runner.session_service.app_state)
+    except Exception as e:
+        error_handler.log_error(f"Failed to initialize: {e}", exc_info=True)
+        print(f"❌ Initialization failed: {e}")
+        
+    finally:
+        try:
+            await agent_manager.cleanup()
+            print("🧹 Cleanup completed")
+        except Exception as e:
+            error_handler.log_error(f"Cleanup error: {e}")
                   
 
 if __name__ == "__main__":
     import asyncio
-    
     from dotenv import load_dotenv
     
+    # Load environment variables
     load_dotenv("multi_tool_agent/.env")
-
+    
+    # Run the main application
     asyncio.run(main())
