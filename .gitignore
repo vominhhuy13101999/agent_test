@@ -11,3 +11,7 @@ wheels/
 
 # Variable Environment files
 .env
+
+.idea/
+
+.chainlit/

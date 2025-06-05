@@ -28,34 +28,41 @@ from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 #             last_user_message = llm_request.contents[-1].parts[0].text
 #     print(f"[Callback] Inspecting last user message: '{last_user_message}'")
 
+_agent = None
+
+async def get_agent() -> Agent:
+    global _agent
+    if _agent is None:
+        _agent = await create_agent()
+    return _agent
+
 async def create_agent():
     """Gets tools from MCP Server"""
-    
-    remote_tools, exit_stack = await MCPToolset.from_server(
+    remote_tools = MCPToolset(
         connection_params=SseServerParams(
             url="http://127.0.0.1:17324/sse"
         )
     )
 
-    for index, tool in enumerate(remote_tools):
+    for index, tool in enumerate(await remote_tools.get_tools()):
         print(f"Tool {index}: {tool._get_declaration().name}")
     
-    # model = "gemini-2.0-flash" - Gemini hosted by Google
-    model_name = "qwen3:1.7B"
-    model = LiteLlm(model=f"ollama_chat/{model_name}")
+    model = "gemini-2.5-flash-preview-05-20"
+    # - Gemini hosted by Google
     
+    # model_name = "qwen3:1.7B"
+    # model = LiteLlm(model=f"ollama_chat/{model_name}")
     
     agent = Agent(
-        name="calculator_agent",
+        name="tool_agent",
         model=model, # Self-hosted model 
-        description="A mathematician agent",
+        description="An agent can answer questions in documents",
         instruction=(
-            "You are a mathematician agent. You can find roots of equations, or solve high school math problems. You can use the tools to help you with your tasks. "
-            "Please provide the result of the calculation."
+            "You are a helpful agent that can answer questions based on the provided documents. "
+            "You can use tools to retrieve information from the documents."
+            "You have to use semantic_search tool for retrieving relevant documents."
         ),
-        tools=remote_tools
+        tools=[remote_tools]
     )
     
-    return agent, exit_stack
-
-# root_agent = create_agent()
+    return agent
