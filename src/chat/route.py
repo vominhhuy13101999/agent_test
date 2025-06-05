@@ -13,8 +13,8 @@ from google.adk.events import Event, EventActions
 
 from fastapi import APIRouter
 
-from src.chat.data_models import MessageRequest, MessageResponse
-from src.agent import get_agent
+from chat.data_models import MessageRequest, MessageResponse
+from agent import get_agent
 
 router = APIRouter()
 
@@ -31,7 +31,7 @@ class Role(str, Enum):
 @router.on_event("startup")
 async def startup_event():
     global agent, session_service
-    agent = get_agent()
+    agent = await get_agent()
     session_service = InMemorySessionService()
 
 @router.post("/", response_model=MessageResponse)
@@ -87,6 +87,7 @@ async def send_message(
 
     response_text = ""
     for event in events:
+        print(event)
         if event.is_final_response():
             response_text = event.content.parts[0].text
     
