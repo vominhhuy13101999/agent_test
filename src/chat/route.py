@@ -34,7 +34,7 @@ async def startup_event():
     agent = await get_agent()
     session_service = InMemorySessionService()
 
-@router.post("/", response_model=MessageResponse)
+@router.post("/chat", response_model=MessageResponse)
 async def send_message(
     input_data: MessageRequest
 ):
@@ -62,8 +62,18 @@ async def send_message(
             session_id=input_data.session_id
         )
 
+    if input_data.use_rag:
+        tools_using_instruction = "Use semantic_search tool for retrieving relevant documents before answering the question."
+    else:
+        tools_using_instruction = "You're not allowed to use semantic_search tool for retrieving relevant documents"
+        
+        # tools_using_instruction = ""
+    
+    # print(f"Tools using instruction: {tools_using_instruction}")
+    
     actions_with_update = EventActions(state_delta={
-        "use_rag": input_data.use_rag
+        "use_rag": input_data.use_rag,
+        "tools_using_instruction": tools_using_instruction
     })
     system_event = Event(
         author="system",

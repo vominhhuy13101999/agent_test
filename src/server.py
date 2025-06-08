@@ -10,7 +10,7 @@ app = FastAPI(
     version="0.1.0"
 )
 
-app.include_router(chat_router, prefix="/chat", tags=["chat"])
+app.include_router(chat_router, prefix="/agent", tags=["agent"])
 
 # Add CORS middleware
 app.add_middleware(
@@ -28,4 +28,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8000)
+    uvicorn.run("server:app", host="0.0.0.0", port=8756)
