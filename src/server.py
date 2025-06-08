@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from chat.route import router as chat_router
+from .chat.route import router as chat_router
+from .tool.route import router as tool_router
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -11,6 +12,7 @@ app = FastAPI(
 )
 
 app.include_router(chat_router, prefix="/agent", tags=["agent"])
+app.include_router(tool_router, prefix="/tools", tags=["tools"])
 
 # Add CORS middleware
 app.add_middleware(
@@ -25,7 +27,17 @@ app.add_middleware(
 async def root():
     return {"message": "Agent API is running"}
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "Agent API is operational"}
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8756)
+    import os
+    from dotenv import load_dotenv
+    
+    # Load environment variables
+    load_dotenv("src/core/.env")
+    
+    uvicorn.run("src.server:app", host="0.0.0.0", port=8756, reload=True)

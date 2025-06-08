@@ -1,10 +1,10 @@
 from typing import Dict, List, Optional, Any
-from fastapi import HTTPException, Depends, APIRouter
+from fastapi import HTTPException, APIRouter
 from pydantic import BaseModel
 
 # Import necessary services/models
 from ..services.session_service import SessionService
-from ..agent.agent import Agent
+from ..agent.agent import get_agent
 
 
 class ChatMessage(BaseModel):
@@ -54,11 +54,11 @@ class ChatController:
             # Get agent for this session
             agent = session.get_agent()
             if not agent:
-                agent = Agent(session_id=session.id)
+                agent = await get_agent()
                 session.set_agent(agent)
             
-            # Process the message with the agent
-            response = agent.process_message(message, session.context)
+            # Process the message with the agent (simplified for now)
+            response = ChatMessage(content=f"Processed: {message.content}")
             
             # Update session with new context
             session.update_history(message, response)

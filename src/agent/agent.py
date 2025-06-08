@@ -1,7 +1,7 @@
 import datetime
 import types
-
 from typing import Dict, Any, Optional
+from copy import copy
 
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
@@ -9,41 +9,37 @@ from google.adk.models import LlmRequest, LlmResponse
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 
+from ..core.config import config
+
+
 def simple_before_model_modifier(
     callback_context: CallbackContext,
     llm_request: LlmRequest,
 ) -> Optional[LlmResponse]:
     agent_name = callback_context.agent_name
-    print(f"[Callback] Before model call for agent  {agent_name}")
+    print(f"[Callback] Before model call for agent {agent_name}")
 
-    from pprint import pprint
-    
-    from copy import copy
-    
-    # print("Contents".center(50, '='))
-    # pprint(llm_request.contents)
-    
-    print("Tool Dict".center(50, '='))
-    pprint(llm_request.tools_dict)
-    
     cloned_tools_dict = copy(llm_request.tools_dict)
     llm_request.tools_dict = cloned_tools_dict
     
-    if not callback_context.state["use_rag"]:
+    if not callback_context.state.get("use_rag", False):
         llm_request.tools_dict.pop("semantic_search", None)
         llm_request.tools_dict.pop("keyword_search", None)
 
-    original_instruction = llm_request.config.system_instruction or types.Content(role="system", parts=[])
-    print("Original Instruction".center(50, '='))
-    print(original_instruction)
+    tools_using_instruction = callback_context.state.get("tools_using_instruction", "")
+    if tools_using_instruction:
+        original_instruction = llm_request.config.system_instruction or types.Content(role="system", parts=[])
+        if original_instruction.parts:
+            original_text = original_instruction.parts[0].text
+            updated_text = original_text.format(tools_using_instruction=tools_using_instruction)
+            llm_request.config.system_instruction = types.Content(
+                role="system",
+                parts=[types.Part(text=updated_text)]
+            )
 
-    # last_user_message = ""
-    # if llm_request.contents and llm_request.contents[-1].role == 'user':
-    #     if llm_request.contents[-1].parts:
-    #         last_user_message = llm_request.contents[-1].parts[0].text
-    # print(f"[Callback] Inspecting last user message: '{last_user_message}'")
 
 _agent = None
+
 
 async def get_agent() -> Agent:
     global _agent
@@ -51,30 +47,35 @@ async def get_agent() -> Agent:
         _agent = await create_agent()
     return _agent
 
-async def create_agent():
-    """Gets tools from MCP Server"""
+
+async def create_agent() -> Agent:
+    """Creates agent with tools from MCP Server"""
+    if not config.is_configured:
+        raise ValueError("Configuration incomplete. Please check environment variables.")
+    
     remote_tools = MCPToolset(
         connection_params=SseServerParams(
-            url="http://127.0.0.1:17324/mcp-server/sse"
+            url=config.get_mcp_server_url()
         )
     )
 
-    for index, tool in enumerate(await remote_tools.get_tools()):
-        print(f"Tool {index}: {tool._get_declaration().name}")
+    try:
+        tools = await remote_tools.get_tools()
+        print(f"Loaded {len(tools)} tools from MCP server")
+        for index, tool in enumerate(tools):
+            print(f"Tool {index}: {tool._get_declaration().name}")
+    except Exception as e:
+        print(f"Warning: Could not load tools from MCP server: {e}")
     
-    model = "gemini-2.5-flash-preview-05-20"
-    # - Gemini hosted by Google
-    
-    # model_name = "qwen3:1.7B"
-    # model = LiteLlm(model=f"ollama_chat/{model_name}")
+    model = config.get_agent_model()
     
     agent = Agent(
-        name="tool_agent",
-        model=model, # Self-hosted model 
-        description="An agent can answer questions in documents",
+        name="document_agent",
+        model=model,
+        description="An AI agent that can answer questions and perform tasks using available tools",
         instruction=(
-            "You are a helpful agent that can answer questions based on the provided documents. "
-            "You can use tools to retrieve information from the documents. "
+            "You are a helpful AI agent that can answer questions and perform tasks using the tools available to you. "
+            "When tools are available, use them appropriately to provide accurate and helpful responses. "
             "{tools_using_instruction}"
         ),
         tools=[remote_tools],
