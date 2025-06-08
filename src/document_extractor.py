@@ -1,12 +1,19 @@
 import warnings
 from pathlib import Path
 from typing import List, Tuple, Optional
-from docling.document_converter import DocumentConverter
+
+try:
+    from docling.document_converter import DocumentConverter
+except ImportError:
+    print("Warning: docling not available. Install with: pip install docling")
+    DocumentConverter = None
 
 class DocumentExtractor:
     """Enhanced document text extraction using docling."""
     
     def __init__(self):
+        if DocumentConverter is None:
+            raise ImportError("docling is required but not installed. Install with: pip install docling")
         self.converter = DocumentConverter()
     
     def extract_text(self, file_path: str) -> str:

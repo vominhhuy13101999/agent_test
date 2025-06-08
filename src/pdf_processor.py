@@ -1,8 +1,8 @@
 import json
 from typing import List, Dict, Any, Tuple
-from agent_manager import AgentManager
-from document_comparator import DocumentComparator
-from config import AppConfig, DocumentType
+from .agent_manager import AgentManager
+from .document_comparator import DocumentComparator
+from .config import AppConfig, DocumentType
 
 class PDFProcessor:
     """Handles PDF comparison workflow using multiple agents."""
@@ -56,7 +56,7 @@ class PDFProcessor:
             # Truncate content to avoid rate limits
             truncated_content = content[:AppConfig.MAX_CONTENT_LENGTH]
             if len(content) > AppConfig.MAX_CONTENT_LENGTH:
-                truncated_content += "\\n\\n[Content truncated due to length...]"
+                truncated_content += "\n\n[Content truncated due to length...]"
             
             extraction_prompt = f"""Questions to answer:
 {json.dumps(questions, indent=2)}
@@ -92,31 +92,39 @@ Document content to analyze:
         return all_extractions
     
     def _create_comparison_result(self, prompt: str, extractions: List[Dict[str, Any]]) -> str:
-        """Create the final comparison result."""
-        result = f"""## Document Comparison
-
-Based on your request: "{prompt}"
-
-I've analyzed {len(extractions)} documents:
-
-"""
+        """Create the final comparison result with proper formatting."""
+        result = f"## 📄 Document Comparison\n\n"
+        result += f"**Request:** {prompt}\n\n"
+        result += f"**Analysis Summary:** I've compared {len(extractions)} documents and extracted key information.\n\n"
         
-        # Add document summaries
+        # Add document summaries with better formatting
         for i, extraction in enumerate(extractions, 1):
-            result += f"### Document {i}: {extraction['document_name']}\\n"
+            doc_name = extraction['document_name']
+            result += f"### 📝 Document {i}: `{doc_name}`\n\n"
+            
             extractions_list = extraction.get('extractions', [])
-            for ext in extractions_list[:AppConfig.MAX_EXTRACTIONS]:
-                question = ext.get('question', 'N/A')
-                answer = ext.get('answer', 'N/A')
-                result += f"- **{question}**: {answer}\\n"
-            result += "\\n"
+            if extractions_list:
+                for ext in extractions_list[:AppConfig.MAX_EXTRACTIONS]:
+                    question = ext.get('question', 'N/A')
+                    answer = ext.get('answer', 'N/A')
+                    # Clean up the answer formatting
+                    clean_answer = answer.replace('\\n', ' ').strip()
+                    result += f"- **{question}**\n  {clean_answer}\n\n"
+            else:
+                result += "- *No structured data extracted*\n\n"
+            
+            result += "---\n\n"
         
-        # Add key differences
+        # Add key differences with better formatting
         differences = self.comparator.find_key_differences(extractions)
         if differences:
-            result += "### Key Differences\\n\\n"
-            for diff in differences[:10]:  # Limit differences shown
-                result += f"- {diff}\\n"
+            result += "### ⚡ Key Differences\n\n"
+            for i, diff in enumerate(differences[:5], 1):  # Limit to 5 most important
+                # Clean up difference formatting
+                clean_diff = diff.replace('\\n', ' ').strip()
+                result += f"{i}. {clean_diff}\n\n"
+        else:
+            result += "### ✅ No Significant Differences\n\nThe documents appear to be very similar in content.\n\n"
         
         return result
 
@@ -157,8 +165,8 @@ Additional context: User has uploaded {len(pdf_contents) if pdf_contents else 0}
         """Handle general queries."""
         full_prompt = prompt
         if pdf_contents:
-            pdf_text = "\\n\\n".join([f"--- {name} ---\\n{content}" for name, content in pdf_contents])
-            full_prompt = f"{prompt}\\n\\nDocument content:\\n{pdf_text}"
+            pdf_text = "\n\n".join([f"--- {name} ---\n{content}" for name, content in pdf_contents])
+            full_prompt = f"{prompt}\n\nDocument content:\n{pdf_text}"
         
         return await self.agent_manager.run_agent(
             self.agent_manager.general_agent,

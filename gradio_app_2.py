@@ -111,7 +111,12 @@ def create_interface():
                 )
                 send = gr.Button("➤", elem_classes="icon-btn")
 
-        chat = gr.Chatbot(type="messages", height=500)
+        chat = gr.Chatbot(
+            type="messages", 
+            height=500,
+            render_markdown=True,
+            sanitize_html=False
+        )
         
         # Add examples
         with gr.Row():

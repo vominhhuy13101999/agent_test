@@ -6,7 +6,7 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.agents import LlmAgent
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 
-from config import AppConfig, MCPConfig, AgentPrompts, DocumentType
+from .config import AppConfig, MCPConfig, AgentPrompts, DocumentType, Role
 
 class AgentManager:
     """Manages all AI agents and their interactions."""
@@ -111,7 +111,7 @@ class AgentManager:
                     user_id=AppConfig.USER_ID,
                     session_id=AppConfig.SESSION_ID,
                     new_message=types.Content(
-                        role=AppConfig.Role.USER, 
+                        role=Role.USER, 
                         parts=[types.Part(text=prompt)]
                     ),
                 )
