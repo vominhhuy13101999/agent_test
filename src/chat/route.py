@@ -59,22 +59,29 @@ async def send_message(
         current_session = await runner.session_service.create_session(
             app_name=app_name,
             user_id=input_data.user_id,
-            session_id=input_data.session_id
+            session_id=input_data.session_id,
+            state={
+                "user:use_rag": input_data.use_rag,
+            }
         )
-
-    if input_data.use_rag:
-        tools_using_instruction = "Use semantic_search tool for retrieving relevant documents before answering the question."
     else:
-        tools_using_instruction = "You're not allowed to use semantic_search tool for retrieving relevant documents"
-        
-        # tools_using_instruction = ""
-    
-    # print(f"Tools using instruction: {tools_using_instruction}")
+        if current_session.state.get("user:use_rag", False) != input_data.use_rag:
+            print("Clear events due to user:use_rag change")
+            await runner.session_service.delete_session(app_name=app_name, user_id=input_data.user_id, session_id=input_data.session_id)
+            
+            current_session = await runner.session_service.create_session(
+                app_name=app_name,
+                user_id=input_data.user_id,
+                session_id=input_data.session_id,
+                state={
+                    "user:use_rag": input_data.use_rag,
+                }
+            )
     
     actions_with_update = EventActions(state_delta={
-        "use_rag": input_data.use_rag,
-        "tools_using_instruction": tools_using_instruction
+        "user:use_rag": input_data.use_rag,
     })
+    
     system_event = Event(
         author="system",
         actions=actions_with_update,
