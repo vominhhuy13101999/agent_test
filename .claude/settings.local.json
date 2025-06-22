@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(rm:*)",
+      "Bash(python:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(rg:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(uv sync:*)",
+      "Bash(pip install:*)",
+      "Bash(/opt/homebrew/bin/python3 -m pip list:*)",
+      "Bash(pyenv:*)",
+      "Bash(uv run:*)"
+    ],
+    "deny": []
+  }
+}
